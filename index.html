@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>English Practice Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ink: #1a1410;
+  --paper: #f5f0e8;
+  --aged: #e0d5c0;
+  --rust: #b5451b;
+  --sage: #5a6e4e;
+  --sky: #2d6a8a;
+  --cream: #faf7f2;
+  --muted: #9a8a7a;
+  --lt-muted: #c8b8a8;
+  --correct: #5a6e4e;
+  --wrong: #b5451b;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Lora', serif;
+  height: 100dvh;
+  display: flex;
+  overflow: hidden;
+  background-image:
+    radial-gradient(ellipse at 15% 0%, rgba(181,69,27,.05) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 100%, rgba(90,110,78,.05) 0%, transparent 55%);
+}
+
+/* ── Sidebar ───────────────────────────────────── */
+.sidebar {
+  width: 240px; min-width: 240px;
+  background: var(--cream);
+  border-right: 1px solid var(--aged);
+  display: flex; flex-direction: column;
+  z-index: 10;
+}
+.sidebar-header { padding: 1.4rem 1.2rem 0.9rem; border-bottom: 1px solid var(--aged); }
+.sidebar-label  { font-family:'DM Mono',monospace; font-size:.74rem; letter-spacing:.18em; text-transform:uppercase; color:var(--rust); }
+.sidebar-title  { font-size:1.12rem; font-weight:600; margin-top:.2rem; }
+
+.new-btn {
+  display:flex; align-items:center; gap:.4rem;
+  width:calc(100% - 2rem); margin:.7rem 1rem;
+  padding:.55rem .8rem;
+  background:var(--ink); color:var(--paper);
+  border:none; border-radius:2px; cursor:pointer;
+  font-family:'DM Mono',monospace; font-size:1.15rem; letter-spacing:.05em;
+  transition:background .15s;
+}
+.new-btn:hover { background:var(--rust); }
+
+.session-list { flex:1; overflow-y:auto; padding:.4rem 0; }
+.sess-item {
+  padding:.6rem 1.2rem; cursor:pointer;
+  border-left:2px solid transparent; transition:all .12s;
+}
+.sess-item:hover { background:rgba(26,20,16,.04); }
+.sess-item.active { border-left-color:var(--rust); background:rgba(181,69,27,.05); }
+.sess-title { font-size:.97rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sess-meta  { font-family:'DM Mono',monospace; font-size:.72rem; color:var(--muted); margin-top:.12rem; }
+.sess-empty { padding:1.5rem 1.2rem; font-size:.93rem; color:var(--lt-muted); font-style:italic; line-height:1.6; }
+
+/* ── Main ──────────────────────────────────────── */
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+/* ── Top bar ───────────────────────────────────── */
+.topbar {
+  padding:.9rem 1.4rem .75rem;
+  border-bottom:1px solid var(--aged);
+  display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;
+}
+.topbar-left { display:flex; flex-direction:column; gap:.12rem; }
+.topbar-label { font-family:'DM Mono',monospace; font-size:.74rem; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+.sess-title-disp { font-size:1.1rem; font-weight:600; max-width:300px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+.mode-row { display:flex; gap:.35rem; flex-wrap:wrap; }
+.mode-btn {
+  font-family:'DM Mono',monospace; font-size:.93rem; letter-spacing:.04em;
+  padding:.25rem .6rem; border:1px solid var(--aged);
+  background:transparent; color:var(--muted); cursor:pointer; border-radius:2px; transition:all .12s;
+}
+.mode-btn:hover, .mode-btn.active { background:var(--ink); color:var(--paper); border-color:var(--ink); }
+
+/* ── Tab bar ───────────────────────────────────── */
+.tab-bar {
+  display:flex; gap:0; border-bottom:1px solid var(--aged);
+  background:var(--cream);
+}
+.tab-btn {
+  font-family:'DM Mono',monospace; font-size:1.15rem; letter-spacing:.06em; text-transform:uppercase;
+  padding:.65rem 1.2rem; border:none; background:transparent; color:var(--muted);
+  cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:all .15s;
+}
+.tab-btn:hover { color:var(--ink); }
+.tab-btn.active { color:var(--rust); border-bottom-color:var(--rust); }
+
+/* ── Tab panels ─────────────────────────────────── */
+.tab-panel { display:none; flex:1; flex-direction:column; overflow:hidden; }
+.tab-panel.active { display:flex; }
+
+/* ── Chat ──────────────────────────────────────── */
+.chat-area {
+  flex:1; overflow-y:auto;
+  padding:1.4rem 1.8rem;
+  display:flex; flex-direction:column; gap:1.2rem;
+}
+.message { display:flex; flex-direction:column; gap:.3rem; animation:fadeUp .28s ease; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(7px)} to{opacity:1;transform:translateY(0)} }
+.message.user      { align-items:flex-end; }
+.message.assistant { align-items:flex-start; }
+.msg-label { font-family:'DM Mono',monospace; font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--lt-muted); }
+.msg-bubble {
+  max-width:75%; padding:.8rem 1rem;
+  font-size:1.06rem; line-height:1.72; white-space:pre-wrap;
+}
+.message.user .msg-bubble { background:var(--ink); color:var(--paper); border-radius:2px 2px 0 2px; }
+.message.assistant .msg-bubble { background:var(--cream); border:1px solid var(--aged); border-radius:2px 2px 2px 0; box-shadow:2px 2px 0 var(--aged); }
+.message.opener .msg-bubble { border-left:2px solid var(--rust); background:rgba(181,69,27,.04); }
+
+.grammar-box {
+  max-width:75%; padding:.6rem .9rem;
+  background:rgba(45,106,138,.07); border-left:2px solid var(--sky);
+  font-size:1.12rem; line-height:1.65; color:#1e4a62;
+}
+.grammar-label { font-family:'DM Mono',monospace; font-size:.72rem; letter-spacing:.1em; text-transform:uppercase; color:var(--sky); display:block; margin-bottom:.25rem; }
+
+.typing-indicator { display:flex; align-items:center; gap:.35rem; padding:.8rem 1rem; background:var(--cream); border:1px solid var(--aged); border-radius:2px 2px 2px 0; width:fit-content; }
+.dot { width:5px; height:5px; background:var(--muted); border-radius:50%; animation:pulse 1.2s ease-in-out infinite; }
+.dot:nth-child(2){animation-delay:.2s} .dot:nth-child(3){animation-delay:.4s}
+@keyframes pulse { 0%,80%,100%{opacity:.3;transform:scale(.8)} 40%{opacity:1;transform:scale(1)} }
+
+.input-area { padding:.7rem 1.4rem 1.1rem; border-top:1px solid var(--aged); }
+.input-row  { display:flex; gap:.55rem; align-items:flex-end; }
+textarea {
+  flex:1; font-family:'Lora',serif; font-size:1.04rem; line-height:1.6;
+  padding:.62rem .88rem; border:1px solid var(--aged); background:var(--cream); color:var(--ink);
+  resize:none; outline:none; border-radius:2px; min-height:46px; max-height:120px; transition:border-color .15s;
+}
+textarea:focus { border-color:var(--rust); }
+textarea::placeholder { color:var(--lt-muted); font-style:italic; }
+.send-btn {
+  font-family:'DM Mono',monospace; font-size:1.15rem; letter-spacing:.06em;
+  padding:0 1rem; background:var(--ink); color:var(--paper);
+  border:none; cursor:pointer; border-radius:2px; height:46px; white-space:nowrap; transition:background .15s;
+}
+.send-btn:hover { background:var(--rust); }
+.send-btn:disabled { background:var(--lt-muted); cursor:not-allowed; }
+.hint { font-family:'DM Mono',monospace; font-size:.72rem; color:var(--lt-muted); margin-top:.35rem; }
+
+.empty-chat { flex:1; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:.55rem; color:var(--lt-muted); text-align:center; padding:2rem; }
+.empty-icon { font-size:1.6rem; opacity:.5; }
+.empty-chat p { font-size:.97rem; font-style:italic; max-width:260px; line-height:1.7; }
+
+/* ── Quiz panel ─────────────────────────────────── */
+.quiz-panel { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+.quiz-controls {
+  padding:1rem 1.8rem; border-bottom:1px solid var(--aged);
+  display:flex; gap:.6rem; align-items:center; flex-wrap:wrap;
+}
+.quiz-type-btn {
+  font-family:'DM Mono',monospace; font-size:1.15rem; letter-spacing:.05em;
+  padding:.4rem .9rem; border:1px solid var(--aged); background:transparent; color:var(--muted);
+  cursor:pointer; border-radius:2px; transition:all .15s;
+}
+.quiz-type-btn:hover, .quiz-type-btn.active { background:var(--sage); color:white; border-color:var(--sage); }
+.start-quiz-btn {
+  font-family:'DM Mono',monospace; font-size:1.15rem; letter-spacing:.06em;
+  padding:.4rem 1rem; background:var(--ink); color:var(--paper);
+  border:none; border-radius:2px; cursor:pointer; transition:background .15s; margin-left:auto;
+}
+.start-quiz-btn:hover { background:var(--rust); }
+.start-quiz-btn:disabled { background:var(--lt-muted); cursor:not-allowed; }
+
+.quiz-area { flex:1; overflow-y:auto; padding:1.4rem 1.8rem; }
+
+/* quiz card */
+.quiz-card {
+  background:var(--cream); border:1px solid var(--aged);
+  border-radius:3px; padding:1.2rem 1.4rem; margin-bottom:1.2rem;
+  box-shadow:2px 2px 0 var(--aged); animation:fadeUp .25s ease;
+}
+.q-num { font-family:'DM Mono',monospace; font-size:.74rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-bottom:.5rem; }
+.q-sentence { font-size:1.12rem; line-height:1.7; margin-bottom:.9rem; }
+.q-blank { display:inline-block; min-width:80px; border-bottom:2px solid var(--rust); text-align:center; padding:0 .3rem; }
+
+/* vocab quiz */
+.q-def { font-size:1.02rem; font-style:italic; color:#5a4a3a; line-height:1.6; margin-bottom:.75rem; }
+.q-example { font-size:.97rem; color:var(--muted); margin-bottom:.9rem; }
+.q-input {
+  font-family:'Lora',serif; font-size:1.06rem; padding:.45rem .7rem;
+  border:1px solid var(--aged); background:white; outline:none; border-radius:2px;
+  width:100%; max-width:260px; transition:border-color .15s;
+}
+.q-input:focus { border-color:var(--rust); }
+
+/* mc options */
+.mc-options { display:flex; flex-direction:column; gap:.45rem; }
+.mc-opt {
+  padding:.55rem .85rem; border:1px solid var(--aged); background:white;
+  border-radius:2px; cursor:pointer; font-size:1.04rem; line-height:1.5;
+  transition:all .15s; text-align:left;
+}
+.mc-opt:hover:not(:disabled) { border-color:var(--ink); background:rgba(26,20,16,.04); }
+.mc-opt.correct { background:rgba(90,110,78,.12); border-color:var(--sage); color:var(--sage); }
+.mc-opt.wrong   { background:rgba(181,69,27,.1);  border-color:var(--rust); color:var(--rust); }
+.mc-opt:disabled { cursor:default; }
+
+/* fill options */
+.fill-options { display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:.8rem; }
+.fill-opt {
+  padding:.4rem .8rem; border:1px solid var(--aged); background:white;
+  border-radius:2px; cursor:pointer; font-family:'DM Mono',monospace; font-size:1.1rem;
+  transition:all .15s;
+}
+.fill-opt:hover:not(:disabled) { border-color:var(--ink); background:rgba(26,20,16,.04); }
+.fill-opt.correct { background:rgba(90,110,78,.12); border-color:var(--sage); color:var(--sage); }
+.fill-opt.wrong   { background:rgba(181,69,27,.1);  border-color:var(--rust); color:var(--rust); }
+.fill-opt:disabled { cursor:default; }
+
+.check-btn {
+  font-family:'DM Mono',monospace; font-size:1.15rem; letter-spacing:.06em;
+  padding:.4rem .85rem; background:var(--ink); color:var(--paper);
+  border:none; border-radius:2px; cursor:pointer; transition:background .15s; margin-top:.5rem;
+}
+.check-btn:hover { background:var(--sage); }
+
+.q-feedback {
+  margin-top:.75rem; padding:.6rem .85rem;
+  border-radius:2px; font-size:.97rem; line-height:1.6;
+}
+.q-feedback.correct { background:rgba(90,110,78,.1); border-left:2px solid var(--sage); color:#3a5030; }
+.q-feedback.wrong   { background:rgba(181,69,27,.08); border-left:2px solid var(--rust); color:#8a2a10; }
+
+/* score card */
+.score-card {
+  text-align:center; padding:2.5rem 1.5rem;
+  background:var(--cream); border:1px solid var(--aged);
+  border-radius:3px; box-shadow:3px 3px 0 var(--aged);
+}
+.score-big { font-size:3rem; font-weight:600; color:var(--rust); letter-spacing:-.03em; }
+.score-label { font-family:'DM Mono',monospace; font-size:1.15rem; letter-spacing:.1em; text-transform:uppercase; color:var(--muted); margin-top:.3rem; }
+.score-msg { font-size:1.08rem; font-style:italic; color:#5a4a3a; margin-top:1rem; line-height:1.6; }
+.retry-btn {
+  margin-top:1.2rem; font-family:'DM Mono',monospace; font-size:1.02rem; letter-spacing:.06em;
+  padding:.55rem 1.2rem; background:var(--ink); color:var(--paper);
+  border:none; border-radius:2px; cursor:pointer; transition:background .15s;
+}
+.retry-btn:hover { background:var(--rust); }
+
+.quiz-empty { padding:3rem 1.8rem; text-align:center; color:var(--lt-muted); font-size:1.15rem; font-style:italic; line-height:1.7; }
+.loading-quiz { padding:2rem; text-align:center; color:var(--muted); font-family:'DM Mono',monospace; font-size:1.06rem; letter-spacing:.05em; }
+
+/* scrollbar */
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-thumb { background:var(--aged); border-radius:2px; }
+
+/* mobile */
+@media(max-width:600px){
+  .sidebar { position:absolute; height:100%; transform:translateX(-100%); }
+  .sidebar.open { transform:translateX(0); box-shadow:4px 0 20px rgba(0,0,0,.15); }
+  .chat-area, .quiz-area { padding:1rem; }
+  .input-area { padding:.55rem .9rem .9rem; }
+  .msg-bubble { max-width:88%; }
+  .quiz-controls { padding:.75rem 1rem; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Sidebar ── -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-label">English Practice Studio</div>
+    <div class="sidebar-title">Sessions</div>
+  </div>
+  <button class="new-btn" onclick="startNewSession()">＋ New Session</button>
+  <div class="session-list" id="sessionList">
+    <div class="sess-empty">No sessions yet. Start your first conversation!</div>
+  </div>
+</aside>
+
+<!-- ── Main ── -->
+<main class="main">
+
+  <!-- topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-label">Session</div>
+      <div class="sess-title-disp" id="sessTitleDisp">New Conversation</div>
+    </div>
+    <div class="mode-row">
+      <button class="mode-btn active" data-mode="free"    onclick="setMode(this,'free')">Free</button>
+      <button class="mode-btn"        data-mode="correct" onclick="setMode(this,'correct')">Careful</button>
+      <button class="mode-btn"        data-mode="formal"  onclick="setMode(this,'formal')">Formal</button>
+      <button class="mode-btn"        data-mode="slow"    onclick="setMode(this,'slow')">Slow</button>
+    </div>
+  </div>
+
+  <!-- tabs -->
+  <div class="tab-bar">
+    <button class="tab-btn active" onclick="switchTab('chat',this)">💬 Conversation</button>
+    <button class="tab-btn"        onclick="switchTab('vocab',this)">📚 Vocabulary Quiz</button>
+    <button class="tab-btn"        onclick="switchTab('fill',this)">✏️ Fill in the Blank</button>
+  </div>
+
+  <!-- ── Chat panel ── -->
+  <div class="tab-panel active" id="tab-chat">
+    <div class="chat-area" id="chatArea">
+      <div class="empty-chat" id="emptyChat">
+        <div class="empty-icon">✦</div>
+        <p>Loading today's conversation opener…</p>
+      </div>
+    </div>
+    <div class="input-area">
+      <div class="input-row">
+        <textarea id="userInput" placeholder="Write in English…"
+          onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send →</button>
+      </div>
+      <div class="hint">Enter to send · Shift+Enter for new line · Grammar feedback appears automatically</div>
+    </div>
+  </div>
+
+  <!-- ── Vocab quiz panel ── -->
+  <div class="tab-panel" id="tab-vocab">
+    <div class="quiz-controls">
+      <span style="font-family:'DM Mono',monospace;font-size:1.15rem;color:var(--muted);letter-spacing:.05em;">VOCABULARY QUIZ</span>
+      <button class="start-quiz-btn" id="startVocabBtn" onclick="startQuiz('vocabulary')">Generate Quiz →</button>
+    </div>
+    <div class="quiz-area" id="vocabArea">
+      <div class="quiz-empty">Generate a quiz based on words from your conversations.<br>The more you chat, the better the questions!</div>
+    </div>
+  </div>
+
+  <!-- ── Fill quiz panel ── -->
+  <div class="tab-panel" id="tab-fill">
+    <div class="quiz-controls">
+      <span style="font-family:'DM Mono',monospace;font-size:1.15rem;color:var(--muted);letter-spacing:.05em;">FILL IN THE BLANK</span>
+      <button class="start-quiz-btn" id="startFillBtn" onclick="startQuiz('fill')">Generate Quiz →</button>
+    </div>
+    <div class="quiz-area" id="fillArea">
+      <div class="quiz-empty">Fill-in-the-blank exercises built from your own sentences.<br>Start a conversation first!</div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+// ── CONFIG ──────────────────────────────────────
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzMCgK0NIbfPFnKdkvOHsSDfXSnmw-nGnf25onaTLxNHDcPNDdcEe3qCnbWc-VoLHA/exec';
+
+// ── STATE ───────────────────────────────────────
+let mode = 'free';
+let history = [];
+let sessionId = null;
+let sessionStartedAt = null;
+let sessionTitle = null;
+let isBusy = false;
+
+// ── INIT ────────────────────────────────────────
+async function init() {
+  await loadSessionList();
+  startNewSession();
+}
+
+// ── SESSION ─────────────────────────────────────
+function startNewSession() {
+  sessionId         = 'sess_' + Date.now();
+  sessionStartedAt  = new Date().toISOString();
+  sessionTitle      = null;
+  history           = [];
+
+  document.getElementById('chatArea').innerHTML =
+    '<div class="empty-chat" id="emptyChat"><div class="empty-icon">✦</div><p>Loading today\'s conversation opener…</p></div>';
+  document.getElementById('sessTitleDisp').textContent = 'New Conversation';
+  document.querySelectorAll('.sess-item').forEach(el => el.classList.remove('active'));
+
+  fetchOpener();
+}
+
+// ── OPENER ──────────────────────────────────────
+async function fetchOpener() {
+  try {
+    const res = await apiFetch({ action: 'getOpener', mode });
+    const opener = res.opener || "What's something you've been curious about lately?";
+    removeEmptyState();
+    appendMessage('assistant', opener, null, true);
+    history.push({ role: 'assistant', content: opener });
+  } catch (e) {
+    removeEmptyState();
+    appendMessage('assistant', "What's been on your mind lately?", null, true);
+  }
+}
+
+// ── CHAT ────────────────────────────────────────
+async function sendMessage() {
+  if (isBusy) return;
+  const input = document.getElementById('userInput');
+  const text  = input.value.trim();
+  if (!text) return;
+
+  removeEmptyState();
+  appendMessage('user', text);
+  history.push({ role: 'user', content: text });
+
+  if (!sessionTitle) {
+    sessionTitle = text.length > 42 ? text.slice(0,42) + '…' : text;
+    document.getElementById('sessTitleDisp').textContent = sessionTitle;
+  }
+
+  input.value = '';
+  input.style.height = 'auto';
+  isBusy = true;
+  document.getElementById('sendBtn').disabled = true;
+
+  const typingEl = appendTyping();
+
+  try {
+    const res = await apiFetch({ action: 'chat', messages: history, mode });
+    typingEl.remove();
+
+    const reply   = res.reply   || 'Sorry, something went wrong.';
+    const grammar = res.grammar || '';
+
+    appendMessage('assistant', reply, grammar);
+    history.push({ role: 'assistant', content: reply });
+    saveSession();
+
+  } catch (err) {
+    typingEl.remove();
+    appendMessage('assistant', 'Connection error. Please try again.');
+  }
+
+  isBusy = false;
+  document.getElementById('sendBtn').disabled = false;
+  input.focus();
+}
+
+// ── QUIZ ────────────────────────────────────────
+async function startQuiz(type) {
+  const areaId = type === 'vocabulary' ? 'vocabArea' : 'fillArea';
+  const btnId  = type === 'vocabulary' ? 'startVocabBtn' : 'startFillBtn';
+  const area   = document.getElementById(areaId);
+  const btn    = document.getElementById(btnId);
+
+  area.innerHTML = '<div class="loading-quiz">Generating quiz from your conversations…</div>';
+  btn.disabled   = true;
+
+  try {
+    const res = await apiFetch({
+      action:          'generateQuiz',
+      type,
+      currentMessages: history,
+      sessionId
+    });
+
+    if (res.error === 'not_enough_data') {
+      area.innerHTML = `<div class="quiz-empty">${res.message}</div>`;
+      btn.disabled   = false;
+      return;
+    }
+    if (res.error) throw new Error(res.error);
+
+    renderQuiz(type, res.quiz, area);
+
+  } catch (e) {
+    area.innerHTML = `<div class="quiz-empty">Could not generate quiz. Please try again.</div>`;
+  }
+  btn.disabled = false;
+}
+
+function renderQuiz(type, questions, area) {
+  area.innerHTML = '';
+  let score = 0;
+  let answered = 0;
+  const total = questions.length;
+
+  questions.forEach((q, i) => {
+    const card = document.createElement('div');
+    card.className = 'quiz-card';
+
+    if (type === 'vocabulary') {
+      renderVocabCard(card, q, i, () => {
+        answered++;
+        if (answered === total) showScore(area, score, total);
+      }, (isCorrect) => { if (isCorrect) score++; });
+    } else {
+      renderFillCard(card, q, i, () => {
+        answered++;
+        if (answered === total) showScore(area, score, total);
+      }, (isCorrect) => { if (isCorrect) score++; });
+    }
+
+    area.appendChild(card);
+  });
+}
+
+// vocab card
+function renderVocabCard(card, q, i, onAnswered, onScore) {
+  let answered = false;
+
+  if (q.type === 'def_to_word') {
+    // type in the word
+    card.innerHTML = `
+      <div class="q-num">Q${i+1} · Definition → Word</div>
+      <div class="q-def">"${escHtml(q.definition)}"</div>
+      <div class="q-example">${escHtml(q.example).replace('__', '<span class="q-blank">____</span>')}</div>
+      <input class="q-input" type="text" placeholder="Type the word…" id="vi-${i}">
+      <br>
+      <button class="check-btn" onclick="checkVocabTyped(${i},'${escJs(q.answer)}',this)">Check →</button>
+      <div class="q-feedback" id="vf-${i}" style="display:none"></div>`;
+
+  } else {
+    // multiple choice
+    const opts = shuffle([...q.options]);
+    card.innerHTML = `
+      <div class="q-num">Q${i+1} · Word → Definition</div>
+      <div class="q-sentence" style="font-weight:600;font-size:1.15rem;">${escHtml(q.word)}</div>
+      <div class="q-example" style="margin-bottom:.75rem;">"${escHtml(q.example)}"</div>
+      <div class="mc-options" id="mc-${i}">
+        ${opts.map(o => `<button class="mc-opt" onclick="checkMC(this,'${escJs(o)}','${escJs(q.answer)}','mc-${i}')">${escHtml(o)}</button>`).join('')}
+      </div>
+      <div class="q-feedback" id="vf-${i}" style="display:none"></div>`;
+  }
+
+  // wire up answered callback via data attr
+  card.dataset.answered = '0';
+  card.dataset.qtype = q.type;
+  card._onAnswered = onAnswered;
+  card._onScore    = onScore;
+}
+
+function checkVocabTyped(i, answer, btn) {
+  const input = document.getElementById(`vi-${i}`);
+  const val   = input.value.trim().toLowerCase();
+  const ok    = val === answer.toLowerCase();
+  const fb    = document.getElementById(`vf-${i}`);
+
+  fb.style.display = 'block';
+  fb.className = `q-feedback ${ok ? 'correct' : 'wrong'}`;
+  fb.textContent  = ok
+    ? `✓ Correct! "${answer}"`
+    : `✗ The answer is "${answer}". ${val ? `You wrote "${val}".` : ''}`;
+
+  btn.disabled   = true;
+  input.disabled = true;
+
+  const card = btn.closest('.quiz-card');
+  if (card._onScore)    card._onScore(ok);
+  if (card._onAnswered) card._onAnswered();
+}
+
+function checkMC(btn, chosen, answer, groupId) {
+  const group = document.getElementById(groupId);
+  group.querySelectorAll('.mc-opt').forEach(b => {
+    b.disabled = true;
+    if (b.textContent === answer) b.classList.add('correct');
+    else if (b === btn && chosen !== answer) b.classList.add('wrong');
+  });
+
+  const ok = chosen === answer;
+  const fb = document.getElementById(groupId.replace('mc-','vf-'));
+  fb.style.display = 'block';
+  fb.className  = `q-feedback ${ok ? 'correct' : 'wrong'}`;
+  fb.textContent = ok ? `✓ Correct!` : `✗ The correct answer is "${answer}".`;
+
+  const card = btn.closest('.quiz-card');
+  if (card._onScore)    card._onScore(ok);
+  if (card._onAnswered) card._onAnswered();
+}
+
+// fill card
+function renderFillCard(card, q, i, onAnswered, onScore) {
+  const allOpts = shuffle([q.answer, ...q.distractors]);
+  const display = escHtml(q.sentence).replace('___', '<span class="q-blank" id="fb-blank-'+i+'">____</span>');
+
+  card.innerHTML = `
+    <div class="q-num">Q${i+1} · Fill in the blank</div>
+    <div class="q-sentence">${display}</div>
+    <div class="fill-options" id="fo-${i}">
+      ${allOpts.map(o => `<button class="fill-opt" onclick="checkFill(this,'${escJs(o)}','${escJs(q.answer)}','fo-${i}',${i},'${escJs(q.explanation)}')">${escHtml(o)}</button>`).join('')}
+    </div>
+    <div class="q-feedback" id="ff-${i}" style="display:none"></div>`;
+
+  card._onAnswered = onAnswered;
+  card._onScore    = onScore;
+}
+
+function checkFill(btn, chosen, answer, groupId, i, explanation) {
+  const group = document.getElementById(groupId);
+  group.querySelectorAll('.fill-opt').forEach(b => {
+    b.disabled = true;
+    if (b.textContent === answer) b.classList.add('correct');
+    else if (b === btn && chosen !== answer) b.classList.add('wrong');
+  });
+
+  const blank = document.getElementById(`fb-blank-${i}`);
+  if (blank) { blank.textContent = answer; blank.style.borderBottomColor = chosen === answer ? 'var(--sage)' : 'var(--rust)'; }
+
+  const ok = chosen === answer;
+  const fb = document.getElementById(`ff-${i}`);
+  fb.style.display = 'block';
+  fb.className  = `q-feedback ${ok ? 'correct' : 'wrong'}`;
+  fb.textContent = ok
+    ? `✓ Correct! ${explanation}`
+    : `✗ The answer is "${answer}". ${explanation}`;
+
+  const card = btn.closest('.quiz-card');
+  if (card._onScore)    card._onScore(ok);
+  if (card._onAnswered) card._onAnswered();
+}
+
+function showScore(area, score, total) {
+  const pct  = Math.round((score / total) * 100);
+  const msgs = [
+    [100, "Perfect score! Your English is really shining ✨"],
+    [80,  "Great work! You've clearly been paying attention."],
+    [60,  "Good effort! A little more practice and you'll nail it."],
+    [0,   "Keep going — every attempt builds your English!"]
+  ];
+  const msg = msgs.find(([min]) => pct >= min)[1];
+
+  const card = document.createElement('div');
+  card.className = 'score-card';
+  card.innerHTML = `
+    <div class="score-big">${score}/${total}</div>
+    <div class="score-label">${pct}% correct</div>
+    <div class="score-msg">${msg}</div>
+    <button class="retry-btn" onclick="location.reload()">Try Again</button>`;
+  area.appendChild(card);
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+// ── SESSION SAVE/LOAD ───────────────────────────
+async function saveSession() {
+  try {
+    await apiFetch({ action:'saveSession', sessionId, title:sessionTitle||'Untitled', mode, messages:history, startedAt:sessionStartedAt });
+    loadSessionList();
+  } catch(e) {}
+}
+
+async function loadSessionList() {
+  try {
+    const res = await apiFetch({ action:'getSessions' });
+    renderSessionList(res.sessions || []);
+  } catch(e) {}
+}
+
+function renderSessionList(sessions) {
+  const list = document.getElementById('sessionList');
+  if (!sessions.length) {
+    list.innerHTML = '<div class="sess-empty">No sessions yet. Start your first!</div>';
+    return;
+  }
+  list.innerHTML = sessions.map(s => `
+    <div class="sess-item ${s.sessionId===sessionId?'active':''}" onclick="loadSession('${s.sessionId}')">
+      <div class="sess-title">${escHtml(s.title||'Untitled')}</div>
+      <div class="sess-meta">${fmtDate(s.updatedAt)} · ${s.mode||'free'}</div>
+    </div>`).join('');
+}
+
+async function loadSession(id) {
+  try {
+    const res = await apiFetch({ action:'getSession', sessionId:id });
+    if (res.error) return;
+
+    sessionId        = res.sessionId;
+    sessionTitle     = res.title;
+    sessionStartedAt = res.startedAt;
+    mode             = res.mode || 'free';
+    history          = res.messages || [];
+
+    document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode===mode));
+    document.getElementById('sessTitleDisp').textContent = sessionTitle || 'Untitled';
+
+    const chatArea = document.getElementById('chatArea');
+    chatArea.innerHTML = '';
+    history.forEach((msg, i) => {
+      appendMessage(msg.role, msg.content, null, msg.role==='assistant' && i===0);
+    });
+
+    loadSessionList();
+    switchTab('chat', document.querySelector('.tab-btn'));
+
+  } catch(e) {}
+}
+
+// ── UI HELPERS ──────────────────────────────────
+function appendMessage(role, text, grammar, isOpener=false) {
+  const chatArea = document.getElementById('chatArea');
+  const div = document.createElement('div');
+  div.className = `message ${role}${isOpener?' opener':''}`;
+
+  const label = document.createElement('div');
+  label.className = 'msg-label';
+  label.textContent = role === 'user' ? 'You' : 'Claude';
+
+  const bubble = document.createElement('div');
+  bubble.className = 'msg-bubble';
+  bubble.textContent = text;
+
+  div.appendChild(label);
+  div.appendChild(bubble);
+
+  // grammar feedback box (user messages only)
+  if (role === 'user' && grammar) {
+    const gb = document.createElement('div');
+    gb.className = 'grammar-box';
+    gb.innerHTML = `<span class="grammar-label">Grammar Feedback</span>${escHtml(grammar)}`;
+    div.appendChild(gb);
+  }
+
+  chatArea.appendChild(div);
+  chatArea.scrollTop = chatArea.scrollHeight;
+  return div;
+}
+
+function appendTyping() {
+  const chatArea = document.getElementById('chatArea');
+  const div = document.createElement('div');
+  div.className = 'message assistant';
+  div.innerHTML = `<div class="msg-label">Claude</div>
+    <div class="typing-indicator"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>`;
+  chatArea.appendChild(div);
+  chatArea.scrollTop = chatArea.scrollHeight;
+  return div;
+}
+
+function removeEmptyState() {
+  const el = document.getElementById('emptyChat');
+  if (el) el.remove();
+}
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  // find the clicked tab button
+  document.querySelectorAll('.tab-btn').forEach(b => {
+    if (b.getAttribute('onclick') && b.getAttribute('onclick').includes("'"+name+"'")) b.classList.add('active');
+  });
+}
+
+function setMode(btn, newMode) {
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  mode = newMode;
+}
+
+function handleKey(e) {
+  if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function fmtDate(iso) {
+  if (!iso) return '';
+  try { return new Date(iso).toLocaleDateString('ko-KR',{month:'short',day:'numeric'}); }
+  catch{ return ''; }
+}
+
+function escHtml(t='') {
+  return String(t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escJs(t='') {
+  return String(t).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+}
+
+function shuffle(arr) {
+  for (let i=arr.length-1;i>0;i--) {
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
+}
+
+// ── API ─────────────────────────────────────────
+async function apiFetch(body) {
+  const res = await fetch(APPS_SCRIPT_URL, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain'},
+    body:JSON.stringify(body),
+    redirect:'follow'
+  });
+  return res.json();
+}
+
+init();
+</script>
+</body>
+</html>
